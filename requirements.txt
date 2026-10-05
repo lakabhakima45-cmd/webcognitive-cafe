@@ -1,0 +1,2 @@
+# Dépendances du projet WebCognitive Engine
+# Elles seront complétées au fil des étapes.
