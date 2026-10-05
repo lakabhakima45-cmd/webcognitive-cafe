@@ -1,0 +1,91 @@
+
+
+Wikipédial'encyclopédie libre
+Rechercher sur Wikipédia
+Rechercher
+Faire un don
+Créer un compte
+Se connecter
+Sommaire masquer
+Début
+Extraction par des solvants organiques
+Extraction au dioxyde de carbone supercritique
+Extraction à l'eau
+Teneur en caféine du café décaféiné
+Références
+Bibliographie
+Décaféination
+
+Article
+Discussion
+Lire
+Modifier
+Modifier le code
+Voir l’historique
+
+Apparence masquer
+Taille du texte
+
+Petite
+
+Standard
+
+Grande
+Largeur
+
+Standard
+
+Large
+Couleur (bêta)
+
+Automatique
+
+Clair
+
+Sombre
+
+Du café décaféiné de 1934.
+La décaféination est l'extraction de caféine de grains de café, de maté, de cacao, de feuilles de thé ou de tout autre produit contenant de la caféine. Ce procédé industriel peut faire intervenir :
+
+une extraction par un solvant organique ;
+une extraction par un fluide supercritique (du dioxyde de carbone) ;
+une extraction à l'eau.
+La première méthode, qui a été utilisée pendant des années, tend à être remplacée par la deuxième pour des raisons de santé (traces résiduelles de solvants), d'impact sur l'environnement, de coût et de saveur. La dernière est la moins efficace et peut dénaturer le goût. Ces trois procédés sont décrits ci-dessous dans le cas de la décaféination du café.
+
+Extraction par des solvants organiques
+C'est le procédé classique qui repose sur la solubilité différentielle (coefficient de partage) de la caféine. La caféine du café est dissoute dans le solvant organique, généralement un solvant chloré (chloroforme, trichloréthylène et dichlorométhane), qui est ensuite éliminé par distillation. L'utilisation du dichlorométhane est réglementée en Europe et aux États-Unis, par le biais des normes ci-après :
+
+Europe : Directive européenne 2009/32/CE du 23 avril 2009, Annexe I, partie II, qui établit une limite maximale de 2 parties par million (mg/kg) dans le café torréfié ;
+États-Unis : F.D.A. Code des règlements fédéraux, titre 21, chapitre 1, sous-chapitre B, part. 173, sec. 173.255 – « Le chlorure de méthylène peut être présent : […] dans le café, en quantité résiduelle, résultant de son utilisation comme solvant […] En quantité non supérieure à 10 parties par million (0,001 %) dans le café décaféiné torréfié et dans l'extrait de café soluble décaféiné. »
+Des solvants organiques tels que l'acétate d'éthyle présentent bien moins de risques pour la santé et l'environnement que les solvants aromatiques et chlorés utilisés par le passé. Une autre méthode consiste à utiliser les huiles triglycéridiques obtenues lors de la mouture du café.
+
+Extraction au dioxyde de carbone supercritique
+Le dioxyde de carbone fluide supercritique est un excellent solvant apolaire pour la caféine et de plus, il est plus sain que les solvants organiques. Le processus d'extraction est simple : le CO2 est forcé de passer au travers des grains de café à des températures supérieures à 31,1 °C et des pressions supérieures à 73 atm. Sous ces conditions, le CO2, qui est dans un état supercritique, a des propriétés spécifiques, d'une part celles d'un gaz, ce qui lui permet de pénétrer profondément dans les grains de café, mais également celles d'un liquide qui dissout 97-99 % de la caféine. Le CO2 chargé de caféine passe ensuite au travers d'un jet d'eau sous haute pression pour en retirer la caféine. La caféine peut enfin être isolée par adsorption sur charbon activé, par distillation, recristallisation ou osmose inverse[1].
+
+Extraction à l'eau
+Les grains de café sont mis à tremper dans l'eau. Celle-ci s'imprègne non seulement de la caféine mais également beaucoup d'autres composés qui participent au goût du café, puis est passée à travers du charbon activé, qui retient la caféine. L'eau peut ensuite être réinjectée avec les grains, puis évaporée, ce qui laisse un café décaféiné doté d'un bon arôme[1].
+
+Les fabricants récupèrent la caféine et la revendent pour son utilisation dans des sodas ou des comprimés de caféine vendus sans ordonnance.
+
+Teneur en caféine du café décaféiné
+Un café dit « décaféiné » ne l’est en fait pas totalement ; pour la plupart des marques, cinq à dix tasses de café « décaféiné » procurent une dose de caféine équivalente à celle de une ou deux tasses de café caféiné, selon une étude nord-américaine qui a testé les cafés de neuf marques par chromatographie en phase gazeuse : hormis une marque, toutes contenaient de 8,6 mg à 13,9 mg de caféine par tasse (de 454 ml). En comparaison une tasse (de 227 ml) de café typique contient 85 mg de caféine. Selon le Dr Mark S. Gold, professeur de psychiatrie à l'université de Floride, cette quantité serait suffisante pour provoquer une dépendance physique au café chez certains consommateurs[2],[3].
+
+Références
+ Senese 2005
+Informationhospitaliere.com 2006
+Trunk 2006
+Bibliographie
+(en) Fred Senese, « How is coffee decaffeinated? [archive] », General Chemistry Online, 20 septembre 2005 (consulté le 22 juin 2009)
+« Le café décaféiné contient encore de la caféine [archive] », Lavoisier, 12 octobre 2006 (consulté le 24 juin 2009)
+(en) Denise Trunk, « UF experts: Decaffeinated coffee is not caffeine-free [archive] », Université de Floride, 10 octobre 2006 (consulté le 24 juin 2009)
+ [afficher]
+v · m
+Café
+icône décorative Portail de la chimie icône décorative Portail du café
+Catégories : ExtractionProcédé chimiqueProcédé agroalimentaireCaféine[+]
+La dernière modification de cette page a été faite le 7 avril 2026 à 05:08. La page a été rendue avec Parsoid.
+Droit d'auteur : les textes sont disponibles sous licence Creative Commons attribution, partage dans les mêmes conditions ; d’autres conditions peuvent s’appliquer. Voyez les conditions d’utilisation pour plus de détails, ainsi que les crédits graphiques. En cas de réutilisation des textes de cette page, voyez comment citer les auteurs et mentionner la licence.
+Wikipedia® est une marque déposée de la Wikimedia Foundation, Inc., organisation de bienfaisance régie par le paragraphe 501(c)(3) du code fiscal des États-Unis.
+Politique de confidentialitéÀ propos de WikipédiaAvertissementsContactContacts juridiques & sécuritéCode de conduiteDéveloppementStatistiquesDéclaration sur les témoins (cookies)Version mobile
+Wikimedia Foundation
+Powered by MediaWiki
