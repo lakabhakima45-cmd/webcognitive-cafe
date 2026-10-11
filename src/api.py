@@ -7,7 +7,8 @@ Routes :
   POST /index    -> lance tout le pipeline : (extraction) -> découpage -> vectorisation
                     -> enregistrement par lots dans ChromaDB, puis renvoie un rapport JSON
   GET  /stats    -> contenu de la base vectorielle
-  GET  /search   -> recherche sémantique simple (testée ici, développée à l'étape 5)
+  GET  /search   -> recherche sémantique : les passages les plus proches d'une question
+  POST /chat     -> assistant RAG : réponse rédigée par le LLM local, avec ses sources (étape 5)
 
 Lancement (depuis le dossier du projet) :
     python -m uvicorn api:app --app-dir src --reload
@@ -15,14 +16,16 @@ Documentation interactive (Swagger) : http://127.0.0.1:8000/docs
 """
 
 from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel, Field
 
 import base_vectorielle
 import pipeline_ingestion
+import rag
 
 app = FastAPI(
     title="WebCognitive Engine – Corpus café",
     description="API d'indexation et de recherche sémantique sur un corpus de 30 documents sur le café.",
-    version="0.4.0",
+    version="0.5.0",
 )
 
 
@@ -70,3 +73,18 @@ def search(
     """Renvoie les passages les plus proches de la question, avec leur source."""
     resultats = base_vectorielle.rechercher(q, k=k, format=format, langue=langue)
     return {"question": q, "nb_resultats": len(resultats), "resultats": resultats}
+
+
+class Question(BaseModel):
+    question: str = Field(..., min_length=3, examples=["Quel pays est le premier producteur mondial de café ?"])
+    k: int = Field(rag.K, ge=1, le=10, description="Nombre de passages donnés au modèle")
+
+
+@app.post("/chat")
+def chat(demande: Question):
+    """Assistant conversationnel (RAG) : recherche les passages pertinents dans la base,
+    puis le modèle local rédige une réponse à partir de ces passages uniquement, avec ses sources."""
+    try:
+        return rag.repondre(demande.question, k=demande.k)
+    except rag.OllamaIndisponible as e:
+        raise HTTPException(status_code=503, detail=str(e))
