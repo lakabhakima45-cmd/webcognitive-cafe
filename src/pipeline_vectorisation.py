@@ -30,13 +30,14 @@ RACINE = Path(__file__).resolve().parent.parent
 DOSSIER_ENTREE = RACINE / "data" / "processed"
 DOSSIER_SORTIE = RACINE / "data" / "vectors"
 
-# --- Paramètres (choisis après les tests de test_chunking.py) ---
+# --- Paramètres choisis après les tests (docs/test_chunking.md et docs/test_modeles.md) ---
+# multilingual-e5-small + morceaux de 500 caractères : 8/10 réponses dans le top 5,
+# bon document trouvé 9 fois sur 10 (contre 4/10 et 6/10 avec le premier modèle).
 TAILLE_CHUNK = 500        # nombre de caractères maximum par morceau (environ)
 CHEVAUCHEMENT = 100       # caractères repris du morceau précédent
-# Modèle multilingue : le corpus contient du français ET de l'anglais.
-# Il produit des vecteurs de 384 dimensions, comme all-MiniLM-L6-v2,
-# mais il comprend aussi le français (all-MiniLM-L6-v2 est entraîné surtout sur l'anglais).
-MODELE = "paraphrase-multilingual-MiniLM-L12-v2"
+# Modèle multilingue (français + anglais) conçu pour relier une question à un passage.
+# Il produit des vecteurs de 384 dimensions, comme all-MiniLM-L6-v2.
+MODELE = "intfloat/multilingual-e5-small"
 
 
 def charger_documents():
@@ -71,11 +72,24 @@ def creer_chunks(documents, taille=TAILLE_CHUNK, chevauchement=CHEVAUCHEMENT):
     return chunks
 
 
-def vectoriser(textes, modele):
+# Certains modèles (famille E5) demandent un préfixe pour distinguer
+# les questions ("query: ") des passages du corpus ("passage: ")
+PREFIXES = {
+    "intfloat/multilingual-e5-small": ("query: ", "passage: "),
+    "intfloat/multilingual-e5-base": ("query: ", "passage: "),
+}
+
+
+def prefixes(nom_modele):
+    """Renvoie (préfixe des questions, préfixe des passages) pour un modèle."""
+    return PREFIXES.get(nom_modele, ("", ""))
+
+
+def vectoriser(textes, modele, prefixe=""):
     """Transforme une liste de textes en une matrice de vecteurs (une ligne par texte).
     Les vecteurs sont normalisés : la similarité cosinus devient un simple produit scalaire."""
     return modele.encode(
-        textes,
+        [prefixe + t for t in textes],
         batch_size=64,
         show_progress_bar=True,
         normalize_embeddings=True,
@@ -85,7 +99,7 @@ def vectoriser(textes, modele):
 
 def rechercher(question, modele, vecteurs, chunks, k=3):
     """Petite démonstration : trouve les morceaux les plus proches d'une question."""
-    v = vectoriser([question], modele)[0]
+    v = vectoriser([question], modele, prefixes(MODELE)[0])[0]
     scores = vecteurs @ v                       # similarité cosinus avec tous les morceaux
     meilleurs = np.argsort(-scores)[:k]
     return [(float(scores[i]), chunks[i]) for i in meilleurs]
@@ -113,7 +127,7 @@ def main():
     print(f"\nChargement du modèle {MODELE}...")
     modele = SentenceTransformer(MODELE)
     print("Vectorisation des morceaux (peut prendre quelques minutes)...")
-    vecteurs = vectoriser([c["texte"] for c in chunks], modele)
+    vecteurs = vectoriser([c["texte"] for c in chunks], modele, prefixes(MODELE)[1])
     print(f"Matrice de vecteurs : {vecteurs.shape[0]} morceaux x {vecteurs.shape[1]} dimensions")
 
     # 4. Enregistrement
@@ -136,7 +150,7 @@ def main():
 
     # Démonstration 1 : une phrase devient une liste de nombres
     phrase = "Le Brésil est le premier producteur mondial de café."
-    v = vectoriser([phrase], modele)[0]
+    v = vectoriser([phrase], modele, prefixes(MODELE)[1])[0]
     print(f"\nExemple : « {phrase} »")
     print(f"  -> vecteur de {len(v)} nombres : [{', '.join(f'{x:.3f}' for x in v[:5])}, ...]")
 
