@@ -41,10 +41,17 @@ def lister_documents():
 def traiter_document(chemin, numero):
     """Extrait, nettoie et décrit un document. Renvoie un dictionnaire."""
     brut = extraire(chemin)
-    texte = nettoyer(brut["texte"])
+    pages = None
+    if brut.get("pages"):
+        # PDF : chaque page est nettoyée à part pour garder son numéro
+        pages = [{"page": i, "texte": nettoyer(t, page_web=False)}
+                 for i, t in enumerate(brut["pages"], start=1)]
+        texte = "\n\n".join(p["texte"] for p in pages if p["texte"])
+    else:
+        texte = nettoyer(brut["texte"])
     infos_fichier = chemin.stat()
 
-    return {
+    document = {
         "id": f"doc_{numero:03d}",
         "fichier": chemin.name,
         "chemin": chemin.relative_to(RACINE).as_posix(),
@@ -59,6 +66,9 @@ def traiter_document(chemin, numero):
         "nb_mots": len(texte.split()),
         "texte": texte,
     }
+    if pages:
+        document["pages"] = pages
+    return document
 
 
 def main():
@@ -81,7 +91,7 @@ def main():
         sortie.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # l'index garde les métadonnées sans le texte complet
-        index.append({k: v for k, v in doc.items() if k != "texte"} | {"sortie": sortie.name})
+        index.append({k: v for k, v in doc.items() if k not in ("texte", "pages")} | {"sortie": sortie.name})
 
         etat = "OK"
         if doc["nb_caracteres"] < SEUIL_TEXTE_COURT:

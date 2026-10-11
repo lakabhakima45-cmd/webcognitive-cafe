@@ -161,11 +161,13 @@ def compacter_espaces(texte):
 # Fonction principale
 # ---------------------------------------------------------------------------
 
-def nettoyer(texte):
-    """Applique toutes les étapes de nettoyage dans l'ordre."""
+def nettoyer(texte, page_web=True):
+    """Applique toutes les étapes de nettoyage dans l'ordre.
+    page_web=False (PDF) : on ne cherche pas de menus Wikipédia à retirer."""
     texte = corriger_encodage(texte)
     texte = normaliser_caracteres(texte)
-    texte = retirer_interface(texte)
+    if page_web:
+        texte = retirer_interface(texte)
     texte = reconstituer_paragraphes(texte)
     texte = compacter_espaces(texte)
     return texte

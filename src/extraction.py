@@ -75,6 +75,7 @@ def lire_pdf(chemin):
 
     return {
         "texte": "\n\n".join(pages_propres),
+        "pages": pages_propres,          # texte de chaque page (pour garder les n° de page)
         "titre": titre_valide(titre),
         "nb_pages": len(pages),
     }

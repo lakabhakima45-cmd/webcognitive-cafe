@@ -2,3 +2,5 @@ pdfplumber
 beautifulsoup4
 lxml
 python-docx
+numpy
+sentence-transformers
