@@ -30,6 +30,7 @@ import base_vectorielle
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODELE_LLM = "llama3.2:3b"
 K = 5                      # nombre de passages donnés au modèle
+MAX_CARACTERES_PASSAGE = 1000   # longueur max d'un passage élargi (limite le temps de calcul)
 TEMPERATURE = 0.1          # faible : réponses factuelles, peu « créatives »
 
 PROMPT_SYSTEME = """Tu es un assistant spécialisé sur le café.
@@ -57,7 +58,11 @@ def elargir(passages):
         voisins = [f"{doc_id}_c{position - 1:04d}", f"{doc_id}_c{position + 1:04d}"]
         trouves = collection.get(ids=voisins, include=["documents"])
         textes = dict(zip(trouves["ids"], trouves["documents"]))
-        p["texte_elargi"] = " ".join(t for t in (textes.get(voisins[0]), p["texte"], textes.get(voisins[1])) if t)
+        avant, apres = textes.get(voisins[0], ""), textes.get(voisins[1], "")
+        # on garde le passage entier et on complète avec la fin du précédent et le début du suivant
+        marge = max(0, (MAX_CARACTERES_PASSAGE - len(p["texte"])) // 2)
+        p["texte_elargi"] = " ".join(t for t in (avant[-marge:] if marge else "", p["texte"],
+                                                 apres[:marge] if marge else "") if t)
     return passages
 
 
@@ -80,17 +85,20 @@ def appeler_llm(question, contexte):
             {"role": "user", "content": message_utilisateur},
         ],
         "stream": False,
-        "options": {"temperature": TEMPERATURE, "num_ctx": 8192},
+        "options": {"temperature": TEMPERATURE, "num_ctx": 4096},
     }).encode("utf-8")
     requete = urllib.request.Request(OLLAMA_URL, data=donnees,
                                      headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(requete, timeout=300) as reponse:
+        with urllib.request.urlopen(requete, timeout=600) as reponse:
             resultat = json.loads(reponse.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
         raise OllamaIndisponible(f"Erreur Ollama ({e.code}) : {detail}. "
                                  f"Le modèle est-il installé ? -> ollama pull {MODELE_LLM}")
+    except TimeoutError:
+        raise OllamaIndisponible("Le modèle a mis plus de 10 minutes à répondre "
+                                 "(ordinateur en veille ou trop chargé ?).")
     except urllib.error.URLError:
         raise OllamaIndisponible("Ollama ne répond pas. Vérifie qu'il est lancé "
                                  "(icône Ollama près de l'horloge, ou commande : ollama serve).")
@@ -151,16 +159,22 @@ def tester():
         "le modèle doit répondre qu'il ne sait pas.",
         "",
     ]
+    sortie = base_vectorielle.RACINE / "docs" / "test_rag.md"
     for n, question in enumerate(questions, start=1):
         print(f"\n===== Question {n}/{len(questions)} =====")
-        r = repondre(question)
-        afficher(r)
-        sources = ", ".join(f"[{s['numero']}] {s['fichier']}" + (f" p.{s['page']}" if s["page"] else "")
-                            for s in r["sources"])
-        lignes += [f"## {n}. {question}", "", r["reponse"], "", f"*Sources : {sources}*",
-                   f"*Durée : {r['duree_totale_s']} s*", ""]
-    sortie = base_vectorielle.RACINE / "docs" / "test_rag.md"
-    sortie.write_text("\n".join(lignes), encoding="utf-8")
+        try:
+            r = repondre(question)
+        except OllamaIndisponible as e:   # une question en échec ne bloque pas les suivantes
+            print(f"  [ERREUR] {e}")
+            lignes += [f"## {n}. {question}", "", f"*Erreur : {e}*", ""]
+        else:
+            afficher(r)
+            sources = ", ".join(f"[{s['numero']}] {s['fichier']}" + (f" p.{s['page']}" if s["page"] else "")
+                                for s in r["sources"])
+            lignes += [f"## {n}. {question}", "", r["reponse"], "", f"*Sources : {sources}*",
+                       f"*Durée : {r['duree_totale_s']} s*", ""]
+        # rapport enregistré après chaque question : rien n'est perdu en cas de coupure
+        sortie.write_text("\n".join(lignes), encoding="utf-8")
     print(f"\nRapport enregistré dans : {sortie}")
 
 
