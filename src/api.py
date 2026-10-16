@@ -9,6 +9,7 @@ Routes :
   GET  /stats    -> contenu de la base vectorielle
   GET  /search   -> recherche sémantique : les passages les plus proches d'une question
   POST /chat     -> assistant RAG : réponse rédigée par le LLM local, avec ses sources (étape 5)
+  GET  /analyse  -> indicateurs statistiques sur le corpus et la base (étape 7, dataviz)
 
 Lancement (depuis le dossier du projet) :
     python -m uvicorn api:app --app-dir src --reload
@@ -18,6 +19,7 @@ Documentation interactive (Swagger) : http://127.0.0.1:8000/docs
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import analyse
 import base_vectorielle
 import pipeline_ingestion
 import rag
@@ -25,7 +27,7 @@ import rag
 app = FastAPI(
     title="WebCognitive Engine – Corpus café",
     description="API d'indexation et de recherche sémantique sur un corpus de 30 documents sur le café.",
-    version="0.5.0",
+    version="0.7.0",
 )
 
 
@@ -88,3 +90,20 @@ def chat(demande: Question):
         return rag.repondre(demande.question, k=demande.k)
     except rag.OllamaIndisponible as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+_analyse_en_cache = None
+
+
+@app.get("/analyse")
+def analyse_corpus(rafraichir: bool = Query(False, description="Recalculer au lieu d'utiliser le résultat en mémoire")):
+    """Indicateurs pour le tableau de bord : documents par format et par langue, taille des
+    documents et des morceaux, mots-clés, pays cités, thèmes par document, mots fréquents
+    et carte sémantique des documents (vecteurs réduits en 2D)."""
+    global _analyse_en_cache
+    if _analyse_en_cache is None or rafraichir:
+        try:
+            _analyse_en_cache = analyse.analyser()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    return _analyse_en_cache

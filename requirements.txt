@@ -8,3 +8,4 @@ chromadb
 fastapi
 uvicorn
 streamlit
+plotly
