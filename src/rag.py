@@ -10,6 +10,10 @@ Fonctionnement pour une question :
      UNIQUEMENT à partir de ces passages, et cite ses sources [1], [2]...
      S'il ne trouve pas la réponse, il doit dire qu'il ne sait pas (pas d'invention).
 
+Deux façons d'obtenir la réponse :
+  - repondre()           : la réponse complète d'un seul coup (route /chat, tests)
+  - repondre_en_direct() : la réponse arrive mot par mot, comme sur ChatGPT (route /chat/stream)
+
 Pré-requis : Ollama installé et lancé, avec le modèle téléchargé :
     ollama pull llama3.2:3b
 
@@ -75,8 +79,9 @@ def construire_contexte(passages):
     return "\n\n".join(blocs)
 
 
-def appeler_llm(question, contexte):
-    """Envoie le prompt au modèle local via l'API d'Ollama."""
+def envoyer_a_ollama(question, contexte, en_direct=False):
+    """Envoie le prompt au modèle local via l'API d'Ollama et renvoie la connexion ouverte.
+    en_direct=True : Ollama envoie la réponse petit à petit (un morceau de texte par ligne)."""
     message_utilisateur = f"Contexte :\n{contexte}\n\nQuestion : {question}"
     donnees = json.dumps({
         "model": MODELE_LLM,
@@ -84,14 +89,13 @@ def appeler_llm(question, contexte):
             {"role": "system", "content": PROMPT_SYSTEME},
             {"role": "user", "content": message_utilisateur},
         ],
-        "stream": False,
+        "stream": en_direct,
         "options": {"temperature": TEMPERATURE, "num_ctx": 4096},
     }).encode("utf-8")
     requete = urllib.request.Request(OLLAMA_URL, data=donnees,
                                      headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(requete, timeout=600) as reponse:
-            resultat = json.loads(reponse.read().decode("utf-8"))
+        return urllib.request.urlopen(requete, timeout=600)
     except urllib.error.HTTPError as e:
         detail = e.read().decode("utf-8", errors="replace")
         raise OllamaIndisponible(f"Erreur Ollama ({e.code}) : {detail}. "
@@ -102,7 +106,32 @@ def appeler_llm(question, contexte):
     except urllib.error.URLError:
         raise OllamaIndisponible("Ollama ne répond pas. Vérifie qu'il est lancé "
                                  "(icône Ollama près de l'horloge, ou commande : ollama serve).")
+
+
+def appeler_llm(question, contexte):
+    """Renvoie la réponse complète du modèle, d'un seul coup."""
+    try:
+        with envoyer_a_ollama(question, contexte) as reponse:
+            resultat = json.loads(reponse.read().decode("utf-8"))
+    except TimeoutError:
+        raise OllamaIndisponible("Le modèle a mis plus de 10 minutes à répondre "
+                                 "(ordinateur en veille ou trop chargé ?).")
     return resultat["message"]["content"].strip()
+
+
+def liste_sources(passages):
+    """Les sources affichées sous la réponse (fichier, page, score, extrait)."""
+    return [
+        {
+            "numero": i,
+            "fichier": p["fichier"],
+            "titre": p["titre"],
+            "page": p.get("page"),
+            "score": p["score"],
+            "extrait": p["texte"][:300],
+        }
+        for i, p in enumerate(passages, start=1)
+    ]
 
 
 def repondre(question, k=K):
@@ -116,21 +145,45 @@ def repondre(question, k=K):
     return {
         "question": question,
         "reponse": reponse,
-        "sources": [
-            {
-                "numero": i,
-                "fichier": p["fichier"],
-                "titre": p["titre"],
-                "page": p.get("page"),
-                "score": p["score"],
-                "extrait": p["texte"][:300],
-            }
-            for i, p in enumerate(passages, start=1)
-        ],
+        "sources": liste_sources(passages),
         "modele_llm": MODELE_LLM,
         "duree_recherche_s": round(t_recherche, 2),
         "duree_totale_s": round(time.time() - debut, 1),
     }
+
+
+def repondre_en_direct(question, k=K):
+    """Même pipeline que repondre(), mais la réponse arrive petit à petit.
+    La recherche et la connexion à Ollama sont faites tout de suite : si Ollama
+    est éteint, l'erreur OllamaIndisponible arrive ici, avant le début de la réponse.
+    Renvoie un générateur de lignes JSON, une par message :
+      {"type": "sources", ...}  puis plusieurs  {"type": "texte", "texte": "..."}
+      puis  {"type": "fin", ...}  (ou {"type": "erreur", ...} si ça coupe en route)."""
+    debut = time.time()
+    passages = elargir(base_vectorielle.rechercher(question, k=k))
+    connexion = envoyer_a_ollama(question, construire_contexte(passages), en_direct=True)
+
+    def ligne(message):
+        return json.dumps(message, ensure_ascii=False) + "\n"
+
+    def generer():
+        yield ligne({"type": "sources", "sources": liste_sources(passages)})
+        try:
+            with connexion:
+                for brut in connexion:          # Ollama envoie une ligne JSON par morceau
+                    morceau = json.loads(brut.decode("utf-8"))
+                    texte = morceau.get("message", {}).get("content", "")
+                    if texte:
+                        yield ligne({"type": "texte", "texte": texte})
+                    if morceau.get("done"):
+                        break
+        except (TimeoutError, OSError, ValueError) as e:
+            yield ligne({"type": "erreur", "message": f"La réponse a été coupée : {e}"})
+            return
+        yield ligne({"type": "fin", "modele_llm": MODELE_LLM,
+                     "duree_totale_s": round(time.time() - debut, 1)})
+
+    return generer()
 
 
 def afficher(resultat):

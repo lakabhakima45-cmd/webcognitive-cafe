@@ -8,7 +8,7 @@ Deux vues, choisies dans la barre latérale :
 
 L'interface ne contient aucune intelligence : elle appelle l'API REST (FastAPI)
 par des requêtes HTTP et affiche les résultats.
-  - mode « Assistant »  -> POST /chat    (réponse du LLM local + sources)
+  - mode « Assistant »  -> POST /chat/stream (réponse du LLM local mot par mot + sources)
   - mode « Recherche »  -> GET  /search  (passages les plus proches, sans LLM, instantané)
   - vue « Analyse »     -> GET  /analyse (indicateurs statistiques)
   - barre latérale      -> GET  /  et  GET /stats (état de l'API et de la base)
@@ -17,6 +17,8 @@ Lancement (2 terminaux, depuis le dossier du projet) :
   1) .venv\\Scripts\\python.exe -m uvicorn api:app --app-dir src
   2) .venv\\Scripts\\python.exe -m streamlit run src\\interface.py
 """
+
+import json
 
 import pandas as pd
 import plotly.express as px
@@ -49,12 +51,27 @@ def api_get(route, delai=DELAI_COURT, **params):
     return r.json()
 
 
-def api_chat(question, k):
-    r = requests.post(API_URL + "/chat", json={"question": question, "k": k}, timeout=DELAI_CHAT)
+def api_chat_en_direct(question, k, resultat):
+    """Appelle POST /chat/stream et renvoie la réponse morceau par morceau (générateur).
+    Les sources et la durée sont rangées dans le dictionnaire « resultat »."""
+    r = requests.post(API_URL + "/chat/stream", json={"question": question, "k": k},
+                      stream=True, timeout=DELAI_CHAT)
     if r.status_code == 503:
         raise RuntimeError("Ollama ne répond pas. Lance l'application Ollama puis réessaie.")
     r.raise_for_status()
-    return r.json()
+    r.encoding = "utf-8"
+    for ligne in r.iter_lines(decode_unicode=True):
+        if not ligne:
+            continue
+        message = json.loads(ligne)
+        if message["type"] == "texte":
+            yield message["texte"]
+        elif message["type"] == "sources":
+            resultat["sources"] = message["sources"]
+        elif message["type"] == "fin":
+            resultat["infos"] = f"{message['modele_llm']} · {message['duree_totale_s']} s"
+        elif message["type"] == "erreur":
+            raise RuntimeError(message["message"])
 
 
 def api_en_ligne():
@@ -111,6 +128,25 @@ def afficher_sources(sources, titre="Sources utilisées", ouvert=False):
             st.markdown(f"> {extrait}…")
 
 
+def conversation_en_texte(historique):
+    """Transforme la conversation en texte (Markdown) pour la télécharger."""
+    lignes = ["# Conversation WebCognitive – Café", ""]
+    for msg in historique:
+        if msg["role"] == "user":
+            lignes.append(f"## Question : {msg['texte']}")
+        else:
+            lignes.append(msg["texte"])
+            if msg.get("infos"):
+                lignes.append(f"*{msg['infos']}*")
+            if msg.get("sources"):
+                lignes.append("")
+                lignes.append("**Sources :**")
+                for s in msg["sources"]:
+                    lignes.append(f"- {nom_source(s)} (similarité {s['score']:.2f})")
+        lignes.append("")
+    return "\n".join(lignes)
+
+
 def vue_chat():
     with st.sidebar:
         mode = st.radio("Mode", ["💬 Assistant (IA)", "🔎 Recherche rapide"])
@@ -118,6 +154,13 @@ def vue_chat():
         if st.button("🗑️ Effacer la conversation"):
             st.session_state.historique = []
             st.rerun()
+        if st.session_state.get("historique"):
+            st.download_button(
+                "💾 Télécharger la conversation",
+                data=conversation_en_texte(st.session_state.historique),
+                file_name="conversation_cafe.md",
+                mime="text/markdown",
+            )
         st.divider()
         st.caption("Exemples de questions")
         for ex in EXEMPLES:
@@ -156,10 +199,11 @@ def vue_chat():
     with st.chat_message("assistant", avatar="☕"):
         try:
             if ia:
+                # la réponse s'affiche mot par mot, au fur et à mesure que Llama l'écrit
+                resultat = {"sources": [], "infos": ""}
                 with st.spinner("Recherche des passages puis rédaction de la réponse…"):
-                    r = api_chat(question, k)
-                texte, sources = r["reponse"], r["sources"]
-                infos = f"{r['modele_llm']} · {r['duree_totale_s']} s"
+                    texte = st.write_stream(api_chat_en_direct(question, k, resultat))
+                sources, infos = resultat["sources"], resultat["infos"]
             else:
                 r = api_get("/search", q=question, k=k)
                 sources = r["resultats"]
@@ -167,10 +211,11 @@ def vue_chat():
                     s["numero"] = i
                 texte = f"Voici les **{len(sources)} passages** les plus proches de ta question :"
                 infos = "recherche sémantique (ChromaDB)"
+                st.markdown(texte)
         except (requests.RequestException, RuntimeError) as e:
             texte, sources, infos = f"⚠️ Erreur : {e}", [], ""
+            st.markdown(texte)
 
-        st.markdown(texte)
         if infos:
             st.caption(infos)
         afficher_sources(sources, "Sources" if ia else "Passages trouvés", ouvert=not ia)
@@ -178,6 +223,8 @@ def vue_chat():
     st.session_state.historique.append(
         {"role": "assistant", "texte": texte, "sources": sources, "infos": infos}
     )
+    # on recharge la page pour que le bouton de téléchargement contienne la dernière réponse
+    st.rerun()
 
 
 # =====================================================================

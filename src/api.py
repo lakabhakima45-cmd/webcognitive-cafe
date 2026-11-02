@@ -9,6 +9,7 @@ Routes :
   GET  /stats    -> contenu de la base vectorielle
   GET  /search   -> recherche sémantique : les passages les plus proches d'une question
   POST /chat     -> assistant RAG : réponse rédigée par le LLM local, avec ses sources (étape 5)
+  POST /chat/stream -> même chose, mais la réponse est envoyée petit à petit (une ligne JSON par morceau)
   GET  /analyse  -> indicateurs statistiques sur le corpus et la base (étape 7, dataviz)
 
 Lancement (depuis le dossier du projet) :
@@ -17,6 +18,7 @@ Documentation interactive (Swagger) : http://127.0.0.1:8000/docs
 """
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import analyse
@@ -27,7 +29,7 @@ import rag
 app = FastAPI(
     title="WebCognitive Engine – Corpus café",
     description="API d'indexation et de recherche sémantique sur un corpus de 30 documents sur le café.",
-    version="0.7.0",
+    version="0.8.0",
 )
 
 
@@ -90,6 +92,18 @@ def chat(demande: Question):
         return rag.repondre(demande.question, k=demande.k)
     except rag.OllamaIndisponible as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/chat/stream")
+def chat_en_direct(demande: Question):
+    """Comme /chat, mais la réponse est envoyée petit à petit, au fur et à mesure que le
+    modèle l'écrit. Chaque ligne est un objet JSON : d'abord les sources, puis les morceaux
+    de texte, puis un message de fin avec la durée."""
+    try:
+        flux = rag.repondre_en_direct(demande.question, k=demande.k)
+    except rag.OllamaIndisponible as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return StreamingResponse(flux, media_type="application/x-ndjson")
 
 
 _analyse_en_cache = None
